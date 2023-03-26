@@ -1,6 +1,3 @@
-**,"Certain comparisons include data from two syndromic surveillance systems; some differences between the systems exist, such as the percent of missing discharge diagnos is codes."
-¶,State does not participate in OD2A DOSE ED data sharing.
-§,The state does not share data from syndromic surveillance systems with DOSE.
 state,geo,startYear,startMonth,endYear,endMonth,allPercentageChange,opioidPercentageChange,heroinPercentageChange,stimulantPercentageChange,allIsSignificant,opioidIsSignificant,heroinIsSignificant,stimulantIsSignificant,allSignificance,opioidSignificance,heroinSignificance,stimulantSignificance,gender,ageRange,jurisdiction_count,comparisonType
 US,US-US,2018,1,2018,2,3.11,5.35,5.33,12.71,true,true,true,true,Significant Increase,Significant Increase,Significant Increase,Significant Increase,all,all,35,1Month2MonthUS
 US,US-US,2018,2,2018,3,8.7,10.85,9.87,17.09,true,true,true,true,Significant Increase,Significant Increase,Significant Increase,Significant Increase,all,all,35,1Month2MonthUS
