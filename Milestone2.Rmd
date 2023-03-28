@@ -1,0 +1,171 @@
+---
+title: "Project Milestone 2"
+output: html_document
+date: '2023-03-26'
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(shiny)
+library(DT)
+library(leaflet)
+```
+
+1
+```{r, echo=FALSE}
+prescribe <- read.csv("https://raw.githubusercontent.com/mwooding217/436project/main/prescriber.csv") %>%
+  group_by(Specialty) %>% 
+  summarise(total = sum(Opioid.Prescriber)) %>%
+  filter(total > 5) %>%
+  drop_na()
+
+reset_selection <- function(xy, brush) {
+  brushedPoints(xy, brush, allRows = TRUE)$selected_
+}
+
+bar_chart = function(prescribe) {
+  prescribe %>%
+    mutate(Specialty = reorder(Specialty, total)) %>%
+    ggplot(aes(x = total, y = Specialty, col = Specialty, width=.75)) +
+      geom_bar(stat = "identity", color = "red") +
+      theme(legend.position = "bottom") +
+    labs(x = "Number of Prescriptions", y = "Specialty", title = "Number of Prescriptions Written per Specialty")
+  }
+
+
+data_table = function(prescribe, selected_) {
+  prescribe %>%
+    filter(selected_) %>%
+    select(Specialty, total)
+}
+
+ui <- fluidPage(
+  titlePanel("Specialty Prescription Count Bar Chart"),
+  fluidRow(
+    column(6, plotOutput("bar_chart", brush = brushOpts("bar_chart_brush", direction = "xy"),height = "800px"))
+  ),
+  dataTableOutput("table")
+)
+
+
+server <- function(input, output) {
+  selected = reactiveVal(rep(TRUE, nrow(prescribe)))
+  
+  observeEvent(
+    input$bar_chart_brush,
+    selected(reset_selection(prescribe, input$bar_chart_brush))
+  )
+  
+  output$bar_chart <- renderPlot(bar_chart(prescribe))
+  output$table <- renderDataTable(data_table(prescribe, selected()))
+}
+
+
+shinyApp(ui, server)
+
+```
+
+
+2
+```{r, include=FALSE}
+deaths <- read.csv("https://raw.githubusercontent.com/mwooding217/436project/main/deaths.csv")
+deaths %>%
+  rename("Prescriptions_Dispensed" = "Prescriptions.Dispensed.by.US.Retailers.in.that.year..millions.")
+```
+
+```{r, echo=FALSE}
+deaths <- read.csv("https://raw.githubusercontent.com/mwooding217/436project/main/deaths.csv")
+deaths$Deaths <- as.integer(deaths$Deaths)
+deaths$Crude.Rate <- as.numeric(deaths$Crude.Rate)
+
+
+death <- deaths %>%
+  drop_na() %>%
+  group_by(Year) %>%
+  summarise(sum_deaths = sum(Deaths))%>%
+  ungroup()
+
+ui <- fluidPage(
+  titlePanel("Crude Death Rate by State"),
+  sidebarLayout(
+    sidebarPanel(
+      selectizeInput(inputId = "state",
+                     label = "Select states:",
+                     choices = unique(deaths$State),
+                     multiple = TRUE),
+      p("Crude Rate is the rate of opioid overdose deaths per 100,000 people in the given state and year.")
+    ),
+    mainPanel(
+      plotOutput(outputId = "lineplot")
+    )
+  )
+)
+
+server <- function(input, output) {
+  filtered_data <- reactive({
+    deaths %>% filter(State %in% input$state)
+  })
+  output$lineplot <- renderPlot({
+    ggplot(data = filtered_data(),
+           aes(x = Year, y = Crude.Rate, color = State)) +
+      geom_line() +
+      ggtitle(paste("Crude Death Rate for", paste(input$state, collapse = ", "))) +
+      labs(x = "Year", y = "Crude Death Rate")
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
+3
+
+```{r, echo=FALSE}
+ui <- fluidPage(
+  titlePanel("Deaths vs Prescription Dispensed by US Retailers"),
+  sidebarLayout(
+    sidebarPanel(
+      selectizeInput(inputId = "state",
+                     label = "Select states:",
+                     choices = unique(deaths$State),
+                     multiple = TRUE),
+      sliderInput(inputId = "year_range",
+                  label = "Year Range",
+                  min = min((deaths$Year)),
+                  max = max((deaths$Year)),
+                  value = c(min((deaths$Year)), max((deaths$Year))),
+                  step = 2,
+                  sep = ""
+      )
+    ),
+    mainPanel(
+      plotOutput(outputId = "scatterplot")
+    )
+  )
+)
+
+server <- function(input, output) {
+  filtered_data <- reactive({
+    deaths %>%
+      filter(State %in% input$state, Year >= input$year_range[1], Year <= input$year_range[2])
+  })
+  
+  output$scatterplot <- renderPlot({
+    ggplot(filtered_data(), aes(x = Prescriptions.Dispensed.by.US.Retailers.in.that.year..millions., y = Deaths, col = State)) +
+      geom_point() +
+      geom_smooth(method = "lm", se = FALSE ) +
+      labs(x = "Prescription Dispensed (millions)", y = "Deaths", color = "State") +
+      ggtitle(paste("Deaths vs Prescription Dispensed in", paste(input$state, collapse = ", "), "from", input$year_range[1], "to",
+                    input$year_range[2]))
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
